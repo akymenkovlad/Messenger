@@ -29,3 +29,6 @@ extension UIView{
         return self.frame.size.width + self.frame.origin.x
     }
 }
+extension Notification.Name{
+    static let didLogInNotificaton = Notification.Name("didLogInNotificaton")
+}

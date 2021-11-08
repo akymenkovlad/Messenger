@@ -1,4 +1,17 @@
 PODS:
+  - AppAuth (1.4.0):
+    - AppAuth/Core (= 1.4.0)
+    - AppAuth/ExternalUserAgent (= 1.4.0)
+  - AppAuth/Core (1.4.0)
+  - AppAuth/ExternalUserAgent (1.4.0)
+  - FBAEMKit (12.1.0):
+    - FBSDKCoreKit_Basics (= 12.1.0)
+  - FBSDKCoreKit (12.1.0):
+    - FBAEMKit (= 12.1.0)
+    - FBSDKCoreKit_Basics (= 12.1.0)
+  - FBSDKCoreKit_Basics (12.1.0)
+  - FBSDKLoginKit (12.1.0):
+    - FBSDKCoreKit (= 12.1.0)
   - Firebase/Auth (8.5.0):
     - Firebase/CoreOnly
     - FirebaseAuth (~> 8.5.0)
@@ -67,6 +80,10 @@ PODS:
     - GoogleUtilities/Environment (~> 7.2)
     - nanopb (~> 2.30908.0)
     - PromisesObjC (< 3.0, >= 1.2)
+  - GoogleSignIn (5.0.0):
+    - AppAuth (~> 1.1)
+    - GTMAppAuth (~> 1.0)
+    - GTMSessionFetcher/Core (~> 1.1)
   - GoogleUtilities/AppDelegateSwizzler (7.5.0):
     - GoogleUtilities/Environment
     - GoogleUtilities/Logger
@@ -86,6 +103,9 @@ PODS:
     - GoogleUtilities/Logger
   - GoogleUtilities/UserDefaults (7.5.0):
     - GoogleUtilities/Logger
+  - GTMAppAuth (1.2.2):
+    - AppAuth/Core (~> 1.4)
+    - GTMSessionFetcher/Core (~> 1.5)
   - GTMSessionFetcher/Core (1.6.1)
   - leveldb-library (1.22.1)
   - nanopb (2.30908.0):
@@ -96,12 +116,19 @@ PODS:
   - PromisesObjC (2.0.0)
 
 DEPENDENCIES:
+  - FBSDKLoginKit
   - Firebase/Auth
   - Firebase/Core
   - Firebase/Database
+  - GoogleSignIn (= 5.0.0)
 
 SPEC REPOS:
   trunk:
+    - AppAuth
+    - FBAEMKit
+    - FBSDKCoreKit
+    - FBSDKCoreKit_Basics
+    - FBSDKLoginKit
     - Firebase
     - FirebaseAnalytics
     - FirebaseAuth
@@ -111,13 +138,20 @@ SPEC REPOS:
     - FirebaseInstallations
     - GoogleAppMeasurement
     - GoogleDataTransport
+    - GoogleSignIn
     - GoogleUtilities
+    - GTMAppAuth
     - GTMSessionFetcher
     - leveldb-library
     - nanopb
     - PromisesObjC
 
 SPEC CHECKSUMS:
+  AppAuth: 31bcec809a638d7bd2f86ea8a52bd45f6e81e7c7
+  FBAEMKit: 56c0bb9b42e3747cd82b67934f0c2b19325382ea
+  FBSDKCoreKit: 75368765d9c2303073145a7925dfaa9d60bcd77b
+  FBSDKCoreKit_Basics: 39865aff97e5f6951a78fb3e89dc4460e35e1895
+  FBSDKLoginKit: e993f97c7cc794c5da4056d8aec3c3d66033a727
   Firebase: ff8c73105b90e33e1dc6c8e5445d7adc2ccdc7c1
   FirebaseAnalytics: 96325c1e0acbd2bb805c6a613028b1fe599d6a37
   FirebaseAuth: b152ea261b60eeb9419ae7e5bf34761382b33277
@@ -127,12 +161,14 @@ SPEC CHECKSUMS:
   FirebaseInstallations: f2bc590b291d25fb40a9a05b8281c02a881b5117
   GoogleAppMeasurement: 8d10c1c470fcb0e5143ed74fddd164f0a0384800
   GoogleDataTransport: 85fd18ff3019bb85d3f2c551d04c481dedf71fc9
+  GoogleSignIn: a62edd0516721d2a3db1259a5681b91f9b41c06a
   GoogleUtilities: eea970f4a389963963bffe8d8fabe43540678b9c
+  GTMAppAuth: ad5c2b70b9a8689e1a04033c9369c4915bfcbe89
   GTMSessionFetcher: 36689134877faeb055b27dfa4ccc9ceaa42e029e
   leveldb-library: 50c7b45cbd7bf543c81a468fe557a16ae3db8729
   nanopb: a0ba3315591a9ae0a16a309ee504766e90db0c96
   PromisesObjC: 68159ce6952d93e17b2dfe273b8c40907db5ba58
 
-PODFILE CHECKSUM: 7b74a8a58080819b8a706d1dee074b894b304933
+PODFILE CHECKSUM: 416f5f6d5e779afbbf8578c37fa5c72a9ee2df25
 
 COCOAPODS: 1.10.2
