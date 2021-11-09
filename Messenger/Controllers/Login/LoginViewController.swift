@@ -182,6 +182,22 @@ class LoginViewController: UIViewController {
             }
             let user = result.user
             
+            let safeEmail = DatabaseManager.safeEmail(emailAddress: email)
+            DatabaseManager.shared.getDataFor(path: safeEmail, completion: {  result in
+                switch result{
+                case .success(let data):
+                    guard let userData = data as? [String: Any],
+                          let firstName = userData["first_name"] as? String,
+                          let lastName = userData["first_name"] as? String else{
+                              return
+                          }
+                    UserDefaults.standard.set("\(firstName) \(lastName)",forKey: "name")
+                case .failure(let error):
+                    print("Failed to read data with error\(error)")
+                }
+                
+            })
+            
             UserDefaults.standard.set(email, forKey: "email")
             
             print("Logged In User: \(user)")
@@ -247,6 +263,7 @@ extension LoginViewController: LoginButtonDelegate{
                   }
             
             UserDefaults.standard.set(email, forKey: "email")
+            UserDefaults.standard.set("\(firstName) \(lastName)",forKey: "name")
             
             DatabaseManager.shared.userExists(with: email, completion: {exists in
                 if !exists{
@@ -278,7 +295,6 @@ extension LoginViewController: LoginButtonDelegate{
                                     }
                                 })
                             }).resume()
-                            
                         }
                     })
                 }
