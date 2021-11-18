@@ -17,18 +17,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, GIDSignInDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        if #available(iOS 15, *) {
-            let appearance = UINavigationBarAppearance()
-            let navigationBar = UINavigationBar()
-            appearance.configureWithOpaqueBackground()
-            appearance.titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.black]
-            appearance.backgroundColor = .white
-            navigationBar.standardAppearance = appearance;
-            UINavigationBar.appearance().scrollEdgeAppearance = appearance
-        }
         
         FirebaseApp.configure()
-        
         
         // Create Google Sign In configuration object.
         GIDSignIn.sharedInstance().clientID = FirebaseApp.app()?.options.clientID
