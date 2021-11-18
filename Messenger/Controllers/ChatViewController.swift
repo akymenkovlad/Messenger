@@ -14,56 +14,12 @@ import AVFoundation
 import AVKit
 import CoreLocation
 
-struct Message : MessageType{
-    public var sender: SenderType
-    public var messageId: String
-    public var sentDate: Date
-    public var kind: MessageKind
-}
-extension MessageKind{
-    var messageKindString: String{
-        switch self{
-        case .text(_):
-            return "text"
-        case .attributedText(_):
-            return "attributed_tex"
-        case .photo(_):
-            return "photo"
-        case .video(_):
-            return "video"
-        case .location(_):
-            return "location"
-        case .emoji(_):
-            return "emoji"
-        case .audio(_):
-            return "audio"
-        case .contact(_):
-            return "contact"
-        case .linkPreview(_):
-            return "link_preview"
-        case .custom(_):
-            return "custom"
-        }
-    }
-}
-struct Sender: SenderType{
-    public var photoURL: String
-    public var senderId: String
-    public var displayName: String
-}
 
-struct Media: MediaItem{
-    var url: URL?
-    var image: UIImage?
-    var placeholderImage: UIImage
-    var size: CGSize
-}
-
-struct Location: LocationItem{
-    var location: CLLocation
-    var size: CGSize
-}
-class ChatViewController: MessagesViewController {
+final class ChatViewController: MessagesViewController {
+    
+    
+    private var senderPhotoUrl: URL?
+    private var otherUserPhotoUrl: URL?
     
     public static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -72,8 +28,8 @@ class ChatViewController: MessagesViewController {
     }()
     
     public var isNewConversation = false
-    public let otherUserEMail: String
-    private let conversationId: String?
+    public let otherUserEmail: String
+    private var conversationId: String?
     
     private var messages = [Message]()
     
@@ -112,7 +68,7 @@ class ChatViewController: MessagesViewController {
     }
     
     init(with email:String, id:String?){
-        self.otherUserEMail = email
+        self.otherUserEmail = email
         self.conversationId = id
         super.init(nibName: nil, bundle: nil)
     }
@@ -201,7 +157,7 @@ class ChatViewController: MessagesViewController {
                                   kind: .location(location))
             
             DatabaseManager.shared.sendMessage(to: conversationId,
-                                               otherUserEmail: strongSelf.otherUserEMail,
+                                               otherUserEmail: strongSelf.otherUserEmail,
                                                name: name,
                                                newMessage: message,
                                                completion: { success in
@@ -322,7 +278,7 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
                                           kind: .photo(media))
                     
                     DatabaseManager.shared.sendMessage(to: conversationId,
-                                                       otherUserEmail: strongSelf.otherUserEMail,
+                                                       otherUserEmail: strongSelf.otherUserEmail,
                                                        name: name,
                                                        newMessage: message,
                                                        completion: { success in
@@ -367,7 +323,7 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
                                           kind: .video(media))
                     
                     DatabaseManager.shared.sendMessage(to: conversationId,
-                                                       otherUserEmail: strongSelf.otherUserEMail,
+                                                       otherUserEmail: strongSelf.otherUserEmail,
                                                        name: name,
                                                        newMessage: message,
                                                        completion: { success in
@@ -390,7 +346,7 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
 extension ChatViewController: InputBarAccessoryViewDelegate{
     func inputBar(_ inputBar: InputBarAccessoryView, didPressSendButtonWith text: String) {
         guard !text.replacingOccurrences(of: " ", with: "").isEmpty,
-              let selfSender = self.selfSender,
+              let selfSender = selfSender,
               let messageId = createMessageId() else{
                   return
               }
@@ -402,13 +358,17 @@ extension ChatViewController: InputBarAccessoryViewDelegate{
         //Send message
         if isNewConversation{
             //create conversation in database
-            DatabaseManager.shared.createNewConversation(with: otherUserEMail,
+            DatabaseManager.shared.createNewConversation(with: otherUserEmail,
                                                          name: self.title ?? "User",
                                                          firstMessage: message,
                                                          completion: { [weak self] success in
                 if success{
                     print("message sent")
                     self?.isNewConversation = false
+                    let newConversationId = "conversation_\(message.messageId)"
+                    self?.conversationId = newConversationId
+                    self?.listenForMessages(id: newConversationId, shouldScrollToBottom: true)
+                    self?.messageInputBar.inputTextView.text = nil
                 }
                 else{
                     print("message wasnt sent")
@@ -420,9 +380,10 @@ extension ChatViewController: InputBarAccessoryViewDelegate{
                 return
             }
             //append to existing conversation data
-            DatabaseManager.shared.sendMessage(to: conversationId,otherUserEmail:otherUserEMail, name: name, newMessage: message, completion: {success in
+            DatabaseManager.shared.sendMessage(to: conversationId,otherUserEmail:otherUserEmail, name: name, newMessage: message, completion: { [weak self] success in
                 if success{
                     print("message sent")
+                    self?.messageInputBar.inputTextView.text = nil
                 }
                 else{
                     print("failed to send")
@@ -439,7 +400,7 @@ extension ChatViewController: InputBarAccessoryViewDelegate{
         }
         let safeCurrentEmail = DatabaseManager.safeEmail(emailAddress: currentUserEmail)
         let dateString = Self.dateFormatter.string(from: Date())
-        let newIdentifier = "\(otherUserEMail)_\(safeCurrentEmail)_\(dateString)"
+        let newIdentifier = "\(otherUserEmail)_\(safeCurrentEmail)_\(dateString)"
         print("Created message id:\(newIdentifier)")
         return newIdentifier
         
@@ -475,6 +436,71 @@ extension ChatViewController: MessagesDataSource, MessagesLayoutDelegate, Messag
             break
         }
     }
+    func backgroundColor(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIColor {
+        let sender = message.sender
+        if sender.senderId == selfSender?.senderId{
+            return.link
+        }
+        else{
+            return .secondarySystemBackground
+        }
+    }
+    func configureAvatarView(_ avatarView: AvatarView, for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {
+        let sender = message.sender
+        
+        if sender.senderId == selfSender?.senderId{
+            if let currentUserImageUrl = senderPhotoUrl{
+                avatarView.sd_setImage(with: currentUserImageUrl, completed: nil)
+            }
+            else{
+                //fetch
+                guard let email = UserDefaults.standard.value(forKey: "email") as? String else{
+                    return
+                }
+                
+                let safeEmail = DatabaseManager.safeEmail(emailAddress: email)
+                let path = "images/\(safeEmail)_profile_picture_png"
+                
+                StorageManager.shared.downloadURL(for: path, completion: { [weak self] result in
+                    switch result{
+                    case .success(let url):
+                        self?.senderPhotoUrl = url
+                        DispatchQueue.main.async {
+                            avatarView.sd_setImage(with: url, completed: nil)
+                        }
+                    case .failure(let error):
+                        print("Error \(error)")
+                    }
+                    
+                })
+            }
+        }
+        else{
+            if let otherUserImageUrl = senderPhotoUrl{
+                avatarView.sd_setImage(with: otherUserImageUrl, completed: nil)
+            }
+            else{
+                //fetch
+                let email = otherUserEmail
+                
+                let safeEmail = DatabaseManager.safeEmail(emailAddress: email)
+                let path = "images/\(safeEmail)_profile_picture_png"
+                
+                StorageManager.shared.downloadURL(for: path, completion: { [weak self] result in
+                    switch result{
+                    case .success(let url):
+                        self?.otherUserPhotoUrl = url
+                        DispatchQueue.main.async {
+                            avatarView.sd_setImage(with: url, completed: nil)
+                        }
+                    case .failure(let error):
+                        print("Error \(error)")
+                    }
+                    
+                })
+            }
+        }
+    }
 }
 extension ChatViewController: MessageCellDelegate{
     func didTapMessage(in cell: MessageCollectionViewCell) {
@@ -487,8 +513,7 @@ extension ChatViewController: MessageCellDelegate{
             let coordinates = locationData.location.coordinate
             let vc = LocationPickerViewController(coordinates: coordinates)
             vc.title = "Location"
-            self.navigationController?.pushViewController(vc, animated: true)
-  
+            navigationController?.pushViewController(vc, animated: true)
         default:
             break
         }
@@ -504,7 +529,7 @@ extension ChatViewController: MessageCellDelegate{
                 return
             }
             let vc = PhotoViewerViewController(with: imageUrl)
-            self.navigationController?.pushViewController(vc, animated: true)
+            navigationController?.pushViewController(vc, animated: true)
         case.video(let media):
             guard let videoUrl = media.url else{
                 return

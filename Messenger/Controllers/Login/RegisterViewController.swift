@@ -10,7 +10,7 @@ import FirebaseAuth
 import JGProgressHUD
 import SwiftUI
 
-class RegisterViewController: UIViewController {
+final class RegisterViewController: UIViewController {
     
     private let spinner = JGProgressHUD(style: .dark)
     
@@ -205,6 +205,8 @@ class RegisterViewController: UIViewController {
                     print("Error creating user")
                     return
                 }
+                UserDefaults.standard.setValue(email, forKey: "email")
+                UserDefaults.standard.setValue("\(firstName) \(lastName)", forKey: "name")
                 let chatUser = ChatAppUser(firstName: firstName,
                                            lastName: lastName,
                                            emailAddress: email)
@@ -242,6 +244,7 @@ class RegisterViewController: UIViewController {
     }
     
 }
+//MARK: UITextFieldDelegate
 extension RegisterViewController: UITextFieldDelegate{
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         if textField == emailField{
@@ -253,6 +256,7 @@ extension RegisterViewController: UITextFieldDelegate{
         return true
     }
 }
+//MARK: UIImagePickerControllerDelegate, UINavigationControllerDelegate
 extension RegisterViewController:UIImagePickerControllerDelegate, UINavigationControllerDelegate{
     func presentPhotoActionSheet(){
         let actionSheet = UIAlertController(title: "Profile Pircture",
@@ -297,6 +301,6 @@ extension RegisterViewController:UIImagePickerControllerDelegate, UINavigationCo
         guard let selectedImage =  info[UIImagePickerController.InfoKey.editedImage] as? UIImage else{
             return
         }
-        self.imageView.image = selectedImage
+        imageView.image = selectedImage
     }
 }

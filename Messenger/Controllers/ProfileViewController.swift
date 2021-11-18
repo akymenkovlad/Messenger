@@ -11,46 +11,77 @@ import FBSDKLoginKit
 import GoogleSignIn
 import SDWebImage
 
-enum ProfileViewModelType{
-    case info, logout
-}
 
-struct ProfileViewModel{
-    let viewModelType: ProfileViewModelType
-    let title: String
-    let handler: (() -> Void)?
-}
-
-class ProfileViewController: UIViewController {
+final class ProfileViewController: UIViewController {
     
     @IBOutlet var tableView: UITableView!
     
     var data = [ProfileViewModel]()
+    private var profileObserver: NSObjectProtocol?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.register(ProfileTableViewCell.self, forCellReuseIdentifier: ProfileTableViewCell.identifier)
+        tableView.register(UITableViewCell.self,
+                           forCellReuseIdentifier: "cell")
+        tableView.delegate = self
+        tableView.dataSource = self
+        startListeningForProfileData()
+    }
+    
+    override func viewWillLayoutSubviews(){
+        super.viewWillLayoutSubviews()
+        tableView.tableHeaderView = createTableHeader()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        print(UserDefaults.standard.value(forKey: "name") as! String)
+        profileObserver = NotificationCenter.default.addObserver(forName: .profileUpdateNotification,
+                                                               object: nil,
+                                                               queue: .main,
+                                                               using: { [weak self]_ in
+            guard let strongSelf = self else{
+                return
+            }
+            strongSelf.tableView.tableHeaderView = strongSelf.createTableHeader()
+            strongSelf.data.removeAll()
+            strongSelf.startListeningForProfileData()
+        })
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        print(data)
+    }
+    
+    private func startListeningForProfileData(){
+        let email = UserDefaults.standard.value(forKey: "email") as? String ?? "No email"
+        let name = UserDefaults.standard.value(forKey: "name") as? String ?? "No name"
+        print(name)
+        if let observer = profileObserver{
+            NotificationCenter.default.removeObserver(observer)
+        }
         
+        print("starting profile fetch...")
         data.append(ProfileViewModel(viewModelType: .info,
-                                     title: "Name: \(UserDefaults.standard.value(forKey: "name") as? String ?? "No Name")",
+                                     title: "Name: \(name)",
                                      handler: nil))
-        data.append(ProfileViewModel(viewModelType: .info, title: "Email: \(UserDefaults.standard.value(forKey: "email") as? String ?? "No email" )", handler: nil))
+        data.append(ProfileViewModel(viewModelType: .info, title: "Email: \(email)", handler: nil))
         data.append(ProfileViewModel(viewModelType: .logout,title: "Log Out",handler: {[weak self] in
             
             guard let strongSelf = self else {
                 return
                 
             }
-            
             let actionSheet = UIAlertController(title: "",
                                                 message: "",
                                                 preferredStyle: .actionSheet)
             actionSheet.addAction(UIAlertAction(title: "Log Out",
                                                 style: .destructive,
-                                                handler: {[weak self] _ in
-                guard let strongSelf = self else {
-                    return
-                }
+                                                handler: {_ in
+                UserDefaults.standard.setValue(nil, forKey: "email")
+                UserDefaults.standard.setValue(nil, forKey: "name")
                 // Log Out facebook
                 FBSDKLoginKit.LoginManager().logOut()
                 
@@ -63,6 +94,9 @@ class ProfileViewController: UIViewController {
                     let nav = UINavigationController(rootViewController: vc)
                     nav.modalPresentationStyle = .fullScreen
                     strongSelf.present(nav, animated: true)
+                    DispatchQueue.main.async {
+                        strongSelf.tabBarController?.selectedIndex = 0
+                    }
                 } catch {
                     print("Failed to log out")
                 }
@@ -72,18 +106,9 @@ class ProfileViewController: UIViewController {
                                                 handler: nil))
             strongSelf.present(actionSheet, animated: true)
         }))
-        
-        tableView.register(UITableViewCell.self,
-                           forCellReuseIdentifier: "cell")
-        tableView.delegate = self
-        tableView.dataSource = self
-        
+        tableView.reloadData()
     }
     
-    override func viewWillLayoutSubviews(){
-        super.viewWillLayoutSubviews()
-        tableView.tableHeaderView = createTableHeader()
-    }
     func createTableHeader() -> UIView? {
         guard let email = UserDefaults.standard.value(forKey: "email") as? String else{
             return nil
@@ -94,15 +119,15 @@ class ProfileViewController: UIViewController {
         let path = "images/"+filename
         let headerView = UIView(frame: CGRect(x: 0,
                                               y: 0,
-                                              width: self.view.width,
-                                              height: 300))
-        headerView.backgroundColor = .link
-        let imageView = UIImageView(frame: CGRect(x: (headerView.width-150)/2,
-                                                  y: 75,
+                                              width: view.width,
+                                              height: 160))
+        headerView.backgroundColor = .systemBackground
+        let imageView = UIImageView(frame: CGRect(x: (view.width-150)/2,
+                                                  y: 5,
                                                   width: 150,
                                                   height: 150))
         imageView.contentMode = .scaleAspectFill
-        imageView.layer.borderColor = UIColor.white.cgColor
+        imageView.layer.borderColor = UIColor.link.cgColor
         imageView.layer.borderWidth = 3
         imageView.layer.masksToBounds = true
         imageView.layer.cornerRadius = imageView.width/2
@@ -113,6 +138,7 @@ class ProfileViewController: UIViewController {
             case .success(let url):
                 imageView.sd_setImage(with: url, completed: nil)
             case .failure(let error):
+                imageView.sd_setImage(with: nil, placeholderImage: UIImage(systemName: "person"))
                 print("failed to get download url: \(error)")
             }
         })
@@ -120,6 +146,7 @@ class ProfileViewController: UIViewController {
         return headerView
     }
 }
+//MARK: UITableViewDelegate, UITableViewDataSource
 extension ProfileViewController: UITableViewDelegate, UITableViewDataSource{
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let viewModel = data[indexPath.row]
@@ -141,14 +168,15 @@ class ProfileTableViewCell: UITableViewCell{
     static let identifier = "ProfileTableViewCell"
     
     public func setUp(with viewModel: ProfileViewModel){
-        self.textLabel?.text = viewModel.title
+        textLabel?.text = viewModel.title
         switch viewModel.viewModelType {
         case .info:
-            self.textLabel?.textAlignment = .left
-            self.selectionStyle = .none
+            textLabel?.textAlignment = .left
+            textLabel?.textColor = .label
+            selectionStyle = .none
         case .logout:
-            self.textLabel?.textColor = .red
-            self.textLabel?.textAlignment = .center
+            textLabel?.textColor = .red
+            textLabel?.textAlignment = .center
         }
     }
 }

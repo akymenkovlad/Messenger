@@ -9,9 +9,10 @@ import UIKit
 import Firebase
 import FBSDKCoreKit
 import GoogleSignIn
+import FirebaseAuth
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, GIDSignInDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func application(
         _ application: UIApplication,
@@ -46,6 +47,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, GIDSignInDelegate {
         )
         return GIDSignIn.sharedInstance().handle(url)
     }
+   
+}
+
+// MARK: GIDSignInDelegate
+
+extension AppDelegate: GIDSignInDelegate{
     func sign(_ signIn: GIDSignIn!, didSignInFor user: GIDGoogleUser!, withError error: Error!) {
         guard error == nil else{
             if let error = error{
@@ -64,9 +71,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, GIDSignInDelegate {
                   return
               }
         
+        
         UserDefaults.standard.set(email, forKey: "email")
         UserDefaults.standard.set("\(firstName) \(lastName)",forKey: "name")
-        
         DatabaseManager.shared.userExists(with: email, completion: {exists in
             if !exists{
                 //insert to database
@@ -110,11 +117,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, GIDSignInDelegate {
                                                        accessToken: authentication.accessToken)
         FirebaseAuth.Auth.auth().signIn(with: credential, completion: { authResult, error in
             guard authResult != nil, error == nil else {
-                print("failed to log in with google credential")
+                print("failed to log in with google credential. error=\(String(describing: error))")
                 return
             }
             print("Successfully signed in with Google credential.")
             NotificationCenter.default.post(name: .didLogInNotificaton, object: nil)
+            NotificationCenter.default.post(name: .profileUpdateNotification, object: nil)
         })
         
     }
@@ -122,4 +130,3 @@ class AppDelegate: UIResponder, UIApplicationDelegate, GIDSignInDelegate {
         print("Google user was disconnected")
     }
 }
-

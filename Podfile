@@ -10,8 +10,10 @@ pod 'Firebase/Core'
 pod 'Firebase/Auth'
 pod 'Firebase/Database'
 pod 'Firebase/Storage'
-pod 'Firebase/Analytics'
 pod 'Firebase/Crashlytics'
+
+# Recommended: Add the Firebase pod for Google Analytics
+pod 'Firebase/Analytics'
 
   # Facebook
 pod 'FBSDKLoginKit'

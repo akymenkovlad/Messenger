@@ -8,19 +8,11 @@
 import UIKit
 import FirebaseAuth
 import JGProgressHUD
-
-struct Conversation{
-    let id:String
-    let name:String
-    let otherUserEmail:String
-    let latestMessage: LatestMessage
-}
-struct LatestMessage{
-    let date: String
-    let text: String
-    let isRead: Bool
-}
-class ConversationsViewController: UIViewController{
+import FBSDKLoginKit
+import GoogleSignIn
+import Firebase
+/// Controller that shows list of conversations
+final class ConversationsViewController: UIViewController{
     
     private let spinner = JGProgressHUD(style: .dark)
     
@@ -54,24 +46,32 @@ class ConversationsViewController: UIViewController{
         view.addSubview(tableView)
         view.addSubview(noConversationsLabel)
         setupTableView()
-        fetchConversations()
         startListeningForConversations()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        tableView.frame = view.bounds
+        noConversationsLabel.frame = CGRect(x: 10,
+                                            y: (view.height-100)/2,
+                                            width: view.width-20,
+                                            height: 100)
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        validateAuth()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        print("will appear")
+        print(UserDefaults.standard.value(forKey: "name"))
         loginObserver = NotificationCenter.default.addObserver(forName: .didLogInNotificaton,object: nil, queue: .main, using: { [weak self]_ in
             guard let strongSelf = self else{
                 return
             }
             strongSelf.startListeningForConversations()
         })
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        tableView.frame = view.bounds
-    }
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        validateAuth()
-        
     }
     
     private func validateAuth(){
@@ -86,10 +86,6 @@ class ConversationsViewController: UIViewController{
     private func setupTableView(){
         tableView.delegate = self
         tableView.dataSource = self
-    }
-    
-    private func fetchConversations(){
-        tableView.isHidden = false
     }
     
     private func startListeningForConversations(){
@@ -108,8 +104,12 @@ class ConversationsViewController: UIViewController{
             case .success(let conversations):
                 print("successfully got conversation models")
                 guard !conversations.isEmpty else{
+                    self?.tableView.isHidden = true
+                    self?.noConversationsLabel.isHidden = false
                     return
                 }
+                self?.noConversationsLabel.isHidden = true
+                self?.tableView.isHidden = false
                 self?.conversations = conversations
                 
                 DispatchQueue.main.async {
@@ -118,6 +118,8 @@ class ConversationsViewController: UIViewController{
                 
             case .failure(let error):
                 print("failed to get convos:\(error)")
+                self?.tableView.isHidden = true
+                self?.noConversationsLabel.isHidden = false
             }
             
         })
@@ -175,6 +177,7 @@ class ConversationsViewController: UIViewController{
         })
     }
 }
+// MARK:  UITableViewDelegate, UITableViewDataSource
 extension ConversationsViewController: UITableViewDelegate, UITableViewDataSource{
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return conversations.count

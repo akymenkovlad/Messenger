@@ -11,9 +11,10 @@ import CoreMedia
 import MessageKit
 import SwiftUI
 import CoreLocation
-
+/// Manager object to read and write data to real time firebase database
 final class DatabaseManager{
-    static let shared = DatabaseManager()
+    ///Shared instance of class
+    public static let shared = DatabaseManager()
     
     private let database = Database.database(url: "https://messenger-e7b9a-default-rtdb.europe-west1.firebasedatabase.app").reference()
     
@@ -24,8 +25,9 @@ final class DatabaseManager{
     }
 }
 extension DatabaseManager{
+    /// returns dictionary nodes at childpath
     public func getDataFor(path: String, completion: @escaping(Result<Any,Error>)->Void){
-        self.database.child("\(path)").observeSingleEvent(of: .value, with: { snapshot in
+        database.child("\(path)").observeSingleEvent(of: .value, with: { snapshot in
             guard let value = snapshot.value else{
                 completion(.failure(DatabaseError.failedToFetch))
                 return
@@ -38,7 +40,10 @@ extension DatabaseManager{
 
 // MARK: -  Account Management
 extension DatabaseManager{
-    
+    ///checks if user exists for given email
+    /// Paramaters
+    /// - `email`: Target email to be checked
+    /// - `completion`: Async closure to return with result
     public func userExists(with email:String,
                            completion: @escaping ((Bool) -> Void)){
         
@@ -60,14 +65,17 @@ extension DatabaseManager{
         database.child(user.safeEmail).setValue([
             "first_name": user.firstName,
             "last_name": user.lastName
-        ], withCompletionBlock:{ error, _ in
+        ], withCompletionBlock:{ [weak self] error, _ in
+            guard let strongSelf = self else{
+                return
+            }
             guard error == nil else{
                 print("Failed to write to database")
                 completion(false)
                 return
             }
             
-            self.database.child("users").observeSingleEvent(of: .value, with: {snapshot in
+            strongSelf.database.child("users").observeSingleEvent(of: .value, with: {snapshot in
                 if var usersCollection = snapshot.value as? [[String:String]]{
                     //append to user dictionary
                     let newElement = [
@@ -75,7 +83,7 @@ extension DatabaseManager{
                         "email": user.safeEmail
                     ]
                     usersCollection.append(newElement)
-                    self.database.child("users").setValue(usersCollection,withCompletionBlock: {error, _ in
+                    strongSelf.database.child("users").setValue(usersCollection,withCompletionBlock: {error, _ in
                         guard error == nil else{
                             completion(false)
                             return
@@ -91,7 +99,7 @@ extension DatabaseManager{
                             "email": user.safeEmail
                         ]
                     ]
-                    self.database.child("users").setValue(newCollection,withCompletionBlock: {error, _ in
+                    strongSelf.database.child("users").setValue(newCollection,withCompletionBlock: {error, _ in
                         guard error == nil else{
                             completion(false)
                             return
@@ -325,7 +333,7 @@ extension DatabaseManager{
                       let content = dictionary["content"] as? String,
                       let senderEmail = dictionary["sender_email"] as? String,
                       let dateString = dictionary["date"] as? String,
-                      let isRead = dictionary["is_read"] as? Bool,
+                      let _ = dictionary["is_read"] as? Bool,
                       let type = dictionary["type"] as? String,
                       let date = ChatViewController.dateFormatter.date(from: dateString)
                 else {
@@ -359,13 +367,13 @@ extension DatabaseManager{
                 }
                 else if type == "location"{
                     let locationComponents = content.components(separatedBy: ",")
-                   guard let longitude = Double(locationComponents[0]),
-                    let latitude = Double(locationComponents[1]) else{
-                        return nil
-                    }
+                    guard let longitude = Double(locationComponents[0]),
+                          let latitude = Double(locationComponents[1]) else{
+                              return nil
+                          }
                     print("Rendering location: long=\(longitude) | lat = \(latitude)")
                     let location = Location(location: CLLocation(latitude: latitude, longitude: longitude),
-                                           size: CGSize(width: 300, height: 300))
+                                            size: CGSize(width: 300, height: 300))
                     kind = .location(location)
                 }
                 else{

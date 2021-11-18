@@ -53,7 +53,7 @@ class NewConversationCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     public func configure(with model:SearchResult){
-        self.userNameLabel.text = model.name
+        userNameLabel.text = model.name
         
         let path = "images/\(model.email)_profile_picture_png"
         StorageManager.shared.downloadURL(for: path, completion: { [weak self] result in
